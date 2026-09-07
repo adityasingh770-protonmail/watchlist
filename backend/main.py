@@ -101,6 +101,43 @@ async def search_tmdb(query: str = Query(min_length=2, max_length=100)):
         ))
     return results
 
+async def enrich_from_tmdb(item: WatchItem) -> WatchItem:
+    """Retrieve detail-only fields before persisting a selected TMDb title."""
+    if item.tmdb_id is None:
+        return item
+    token = os.getenv('TMDB_ACCESS_TOKEN')
+    if not token:
+        raise HTTPException(status_code=503, detail='TMDb is not configured. Add TMDB_ACCESS_TOKEN to backend/.env.')
+    endpoint = 'movie' if item.media_type == 'movie' else 'tv'
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f'https://api.themoviedb.org/3/{endpoint}/{item.tmdb_id}',
+                params={'language': 'en-US'}, headers={'Authorization': f'Bearer {token}', 'accept': 'application/json'},
+            )
+            response.raise_for_status()
+    except httpx.HTTPStatusError as error:
+        raise HTTPException(status_code=502, detail='TMDb rejected the title detail request.') from error
+    except httpx.HTTPError as error:
+        raise HTTPException(status_code=502, detail='Could not reach TMDb.') from error
+
+    details = response.json()
+    date = details.get('release_date') or details.get('first_air_date') or ''
+    runtime = details.get('runtime')
+    if item.media_type == 'movie' and runtime:
+        item.runtime = f'{runtime // 60}h {runtime % 60}m' if runtime >= 60 else f'{runtime}m'
+    elif item.media_type == 'series':
+        seasons = details.get('number_of_seasons')
+        item.runtime = f'{seasons} season' if seasons == 1 else f'{seasons} seasons' if seasons else 'TV series'
+    item.title = details.get('title') or details.get('name') or item.title
+    item.year = int(date[:4]) if len(date) >= 4 and date[:4].isdigit() else item.year
+    item.genre = ' · '.join(genre['name'] for genre in details.get('genres', []) if genre.get('name')) or item.genre
+    item.notes = details.get('overview') or item.notes
+    item.rating = round(details['vote_average'], 1) if details.get('vote_average') else None
+    if poster_path := details.get('poster_path'):
+        item.poster_url = f'https://image.tmdb.org/t/p/w500{poster_path}'
+    return item
+
 @app.get('/watchlist', response_model=list[WatchItem])
 def get_watchlist(media_type: str | None = None):
     with database() as connection:
@@ -111,7 +148,8 @@ def get_watchlist(media_type: str | None = None):
     return [WatchItem(**dict(row)) for row in rows]
 
 @app.post('/watchlist', response_model=WatchItem, status_code=201)
-def add_to_watchlist(item: WatchItem):
+async def add_to_watchlist(item: WatchItem):
+    item = await enrich_from_tmdb(item)
     with database() as connection:
         cursor = connection.execute(
             '''INSERT INTO watchlist (title, year, media_type, status, genre, notes, poster_url, runtime, rating, tmdb_id)

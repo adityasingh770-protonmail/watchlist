@@ -53,7 +53,7 @@ export default function Home() {
     setItems([newItem, ...items]); setTitle(''); setSelected(null); setResults([]); setShowAdd(false)
     try {
       const response = await fetch(`${apiUrl}/watchlist`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: selected.title, year: selected.year, media_type: selected.media_type, status: 'later', genre: 'From TMDb', poster_url: selected.poster_url, tmdb_id: selected.tmdb_id }) })
-      if (response.ok) { const saved = await response.json(); setItems(current => current.map(item => item.id === newItem.id ? { ...item, id: saved.id } : item)) }
+      if (response.ok) { const saved: StoredItem = await response.json(); setItems(current => current.map(item => item.id === newItem.id ? cardFromStored(saved) : item)) }
     } catch { /* Keep the temporary card visible if the local API is offline. */ }
   }
   function removeItem(id: number) { setItems(items.filter(i => i.id !== id)); fetch(`${apiUrl}/watchlist/${id}`, { method: 'DELETE' }).catch(() => undefined) }
