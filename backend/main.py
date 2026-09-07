@@ -18,13 +18,16 @@ class WatchItem(BaseModel):
     title: str = Field(min_length=1, max_length=160)
     year: int | None = None
     media_type: Literal['movie', 'series']
-    status: Literal['watch_next', 'later', 'in_progress'] = 'later'
+    status: Literal['watch_next', 'later', 'in_progress', 'completed'] = 'later'
     genre: str | None = None
     notes: str | None = None
     poster_url: str | None = None
     runtime: str | None = None
     rating: float | None = None
     tmdb_id: int | None = None
+
+class WatchStatusUpdate(BaseModel):
+    status: Literal['watch_next', 'later', 'in_progress', 'completed']
 
 class TMDbResult(BaseModel):
     tmdb_id: int
@@ -117,6 +120,15 @@ def add_to_watchlist(item: WatchItem):
         )
         item.id = cursor.lastrowid
     return item
+
+@app.patch('/watchlist/{item_id}', response_model=WatchItem)
+def update_watch_status(item_id: int, update: WatchStatusUpdate):
+    with database() as connection:
+        cursor = connection.execute('UPDATE watchlist SET status = ? WHERE id = ?', (update.status, item_id))
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail='Watchlist item not found')
+        row = connection.execute('SELECT * FROM watchlist WHERE id = ?', (item_id,)).fetchone()
+    return WatchItem(**dict(row))
 
 @app.delete('/watchlist/{item_id}', status_code=204)
 def delete_watch_item(item_id: int):
