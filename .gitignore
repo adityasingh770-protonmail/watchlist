@@ -1,0 +1,8 @@
+node_modules/
+.next/
+*.pyc
+__pycache__/
+backend/.venv/
+backend/.env
+backend/frame.db
+.env*.local
