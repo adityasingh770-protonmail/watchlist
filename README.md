@@ -23,6 +23,8 @@ The UI is available at http://localhost:3000 and API documentation at http://loc
 
 Watchlist entries are stored locally in `backend/frame.db` (SQLite). This file persists across frontend refreshes and backend restarts, and is excluded from Git because it is personal local data.
 
+To refresh metadata for existing TMDb-backed entries, run `uv run python enrich_existing.py` from `backend/`.
+
 `backend/.python-version` also makes pyenv select Python 3.14.0 when you enter the backend directory. If you prefer pyenv directly, run `pyenv local 3.14.0`, then create a virtual environment with `python -m venv .venv`.
 
 ## TMDb integration
