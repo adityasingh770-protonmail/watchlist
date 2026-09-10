@@ -35,3 +35,15 @@ body {
     transform: rotateY(0);
   }
 }
+
+.poster-progress {
+  animation: poster-progress 3s linear forwards;
+}
+@keyframes poster-progress {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}

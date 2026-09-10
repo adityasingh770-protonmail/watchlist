@@ -2,10 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  Bell,
   ChevronDown,
   Clock3,
-  Film,
   Grid2X2,
   LayoutList,
   Plus,
@@ -14,6 +12,7 @@ import {
   Star,
   X,
 } from "lucide-react";
+import { Navbar } from "@/components/navbar";
 
 type Item = {
   id: number;
@@ -26,6 +25,7 @@ type Item = {
   ratingCount: number | null;
   description: string | null;
   tmdbId?: number | null;
+  posterUrls?: string[] | null;
   image: string;
   status: "Watch next" | "Later" | "In progress" | "Completed";
 };
@@ -35,6 +35,7 @@ type TMDbResult = {
   year: number | null;
   media_type: "movie" | "series";
   poster_url: string | null;
+  poster_urls: string[] | null;
   overview: string | null;
   rating: number | null;
   rating_count: number | null;
@@ -51,6 +52,7 @@ type StoredItem = {
   rating: number | null;
   rating_count: number | null;
   poster_url: string | null;
+  poster_urls: string[] | null;
   tmdb_id: number | null;
 };
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -135,6 +137,7 @@ function cardFromStored(item: StoredItem): Item {
     ratingCount: item.rating_count,
     description: item.notes,
     tmdbId: item.tmdb_id,
+    posterUrls: item.poster_urls,
     image: item.poster_url ?? fallbackPoster,
     status:
       item.status === "watch_next"
@@ -164,7 +167,9 @@ export default function Home() {
     [statusMenuId, setStatusMenuId] = useState<number | null>(null),
     [flippedId, setFlippedId] = useState<number | null>(null),
     [similar, setSimilar] = useState<Record<number, TMDbResult[]>>({}),
-    [similarLoadingId, setSimilarLoadingId] = useState<number | null>(null);
+    [similarLoadingId, setSimilarLoadingId] = useState<number | null>(null),
+    [hoveredId, setHoveredId] = useState<number | null>(null),
+    [posterIndexes, setPosterIndexes] = useState<Record<number, number>>({});
   const visible = useMemo(
     () =>
       items.filter(
@@ -220,6 +225,19 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [title, showAdd]);
 
+  useEffect(() => {
+    if (hoveredId === null) return;
+    const posters = items.find((item) => item.id === hoveredId)?.posterUrls;
+    if (!posters || posters.length < 2) return;
+    const timer = window.setInterval(() => {
+      setPosterIndexes((current) => ({
+        ...current,
+        [hoveredId]: ((current[hoveredId] ?? 0) + 1) % posters.length,
+      }));
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [hoveredId, items]);
+
   async function addItem(e: React.FormEvent) {
     e.preventDefault();
     if (!selected) return;
@@ -234,6 +252,7 @@ export default function Home() {
       ratingCount: selected.rating_count,
       description: selected.overview,
       tmdbId: selected.tmdb_id,
+      posterUrls: selected.poster_url ? [selected.poster_url] : null,
       status: "Later",
       image: selected.poster_url ?? fallbackPoster,
     };
@@ -322,31 +341,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen px-5 pb-10 pt-5 sm:px-10 lg:px-16">
-      <header className="mx-auto flex max-w-7xl items-center justify-between border-b border-line pb-5">
-        <div className="flex items-center gap-2">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-ink text-gold">
-            <Film size={18} />
-          </div>
-          <span className="font-display text-2xl font-bold tracking-tight">
-            frame
-          </span>
-        </div>
-        <nav className="hidden items-center gap-8 text-sm text-zinc-500 md:flex">
-          <a className="font-medium text-ink" href="#watchlist">
-            Watchlist
-          </a>
-          <a href="#discover">Discover</a>
-          <a href="/credits">Credits</a>
-        </nav>
-        <div className="flex items-center gap-3">
-          <button className="hidden h-9 w-9 place-items-center rounded-full text-zinc-500 hover:bg-white sm:grid">
-            <Bell size={18} />
-          </button>
-          <div className="grid h-9 w-9 place-items-center rounded-full bg-[#D9D0C6] text-sm font-semibold">
-            AR
-          </div>
-        </div>
-      </header>
+      <Navbar />
       <section className="mx-auto max-w-7xl py-12 sm:py-16">
         <p className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-[.18em] text-coral">
           <Sparkles size={15} /> Your collection
@@ -432,6 +427,11 @@ export default function Home() {
           {visible.map((item) => (
             <article
               key={item.id}
+              onMouseEnter={() => setHoveredId(item.id)}
+              onMouseLeave={() => {
+                setHoveredId(null);
+                setPosterIndexes((current) => ({ ...current, [item.id]: 0 }));
+              }}
               className={`group overflow-visible rounded-2xl border bg-white shadow-card transition hover:-translate-y-1 hover:shadow-lg ${view === "grid" ? "mb-5 break-inside-avoid" : ""} ${flippedId === item.id ? "card-flip p-5" : view === "list" ? "flex h-36" : ""}`}
             >
               {flippedId === item.id ? (
@@ -495,17 +495,44 @@ export default function Home() {
                     onClick={() => flipCard(item.id)}
                     className={`relative overflow-hidden bg-zinc-200 ${view === "list" ? "w-48 shrink-0" : "aspect-[16/10] rounded-t-2xl"}`}
                   >
-                    <img
-                      src={item.image}
-                      alt={`${item.title} poster`}
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                    />
-                    <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold backdrop-blur">
+                    {(item.posterUrls?.length
+                      ? item.posterUrls
+                      : [item.image]
+                    ).map((poster, index) => (
+                      <img
+                        key={poster}
+                        src={poster}
+                        alt={index === 0 ? `${item.title} poster` : ""}
+                        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-in-out ${index === (posterIndexes[item.id] ?? 0) ? "opacity-100" : "opacity-0"}`}
+                      />
+                    ))}
+                    {hoveredId === item.id &&
+                      (item.posterUrls?.length ?? 0) > 1 && (
+                        <div className="absolute left-3 right-3 top-3 z-10 flex gap-1">
+                          {item.posterUrls?.map((_, index) => (
+                            <span
+                              key={index}
+                              className="h-1 flex-1 overflow-hidden rounded-full bg-white/35"
+                            >
+                              {index <= (posterIndexes[item.id] ?? 0) && (
+                                <span
+                                  key={`${item.id}-${index}-${posterIndexes[item.id]}`}
+                                  className={`block h-full rounded-full bg-white ${index === (posterIndexes[item.id] ?? 0) ? "poster-progress" : "w-full"}`}
+                                />
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    <span className="absolute left-3 top-6 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold backdrop-blur">
                       {item.type}
                     </span>
                     <button
                       aria-label={`Remove ${item.title}`}
-                      onClick={() => removeItem(item.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        removeItem(item.id);
+                      }}
                       className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-black/30 text-white opacity-0 backdrop-blur transition group-hover:opacity-100"
                     >
                       <X size={15} />

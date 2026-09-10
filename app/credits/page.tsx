@@ -1,12 +1,5 @@
-import Link from "next/link";
-import {
-  ArrowLeft,
-  Database,
-  ExternalLink,
-  Film,
-  ImageIcon,
-  Star,
-} from "lucide-react";
+import { Database, ExternalLink, ImageIcon, Star } from "lucide-react";
+import { Navbar } from "@/components/navbar";
 
 const TMDB_LOGO =
   "https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg";
@@ -14,22 +7,7 @@ const TMDB_LOGO =
 export default function CreditsPage() {
   return (
     <main className="min-h-screen px-5 pb-12 pt-5 sm:px-10 lg:px-16">
-      <header className="mx-auto flex max-w-5xl items-center justify-between border-b border-line pb-5">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-ink text-gold">
-            <Film size={18} />
-          </div>
-          <span className="font-display text-2xl font-bold tracking-tight">
-            frame
-          </span>
-        </Link>
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-600 hover:text-ink"
-        >
-          <ArrowLeft size={16} /> Back to watchlist
-        </Link>
-      </header>
+      <Navbar />
 
       <section className="mx-auto max-w-5xl py-14 sm:py-20">
         <p className="text-sm font-semibold uppercase tracking-[.18em] text-coral">
