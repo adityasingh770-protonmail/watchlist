@@ -336,7 +336,7 @@ export default function Home() {
             Watchlist
           </a>
           <a href="#discover">Discover</a>
-          <a href="#credits">Credits</a>
+          <a href="/credits">Credits</a>
         </nav>
         <div className="flex items-center gap-3">
           <button className="hidden h-9 w-9 place-items-center rounded-full text-zinc-500 hover:bg-white sm:grid">
@@ -620,11 +620,10 @@ export default function Home() {
           </button>
         </div>
       </section>
-      <footer
-        id="credits"
-        className="mx-auto mt-8 max-w-7xl text-center text-xs text-zinc-400"
-      >
-        This product uses the TMDB API but is not endorsed or certified by TMDB.
+      <footer className="mx-auto mt-8 max-w-7xl text-center text-xs text-zinc-400">
+        <a href="/credits" className="hover:text-ink">
+          Credits &amp; data sources
+        </a>
       </footer>
       {showAdd && (
         <div className="fixed inset-0 z-20 grid place-items-center bg-ink/35 p-5 backdrop-blur-sm">
